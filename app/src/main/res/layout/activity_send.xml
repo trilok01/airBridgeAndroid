@@ -8,7 +8,7 @@
     <EditText
         android:id="@+id/ipAddressBox"
         android:layout_width="300dp"
-        android:layout_height="40dp"
+        android:layout_height="48dp"
         android:hint="Enter receiver's IP address"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -16,8 +16,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.25" />
+
+    <EditText
+        android:id="@+id/portNumberBox"
+        android:layout_width="300dp"
+        android:layout_height="48dp"
+        android:hint="Enter receiver's port number"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.495"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.35" />
+
     <Button
-        android:id="@+id/selectFile"
+        android:id="@+id/btnSelectFile"
         android:layout_width="242dp"
         android:layout_height="87dp"
         android:text="Select File"
@@ -26,10 +39,10 @@
         app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5" />
+        app:layout_constraintVertical_bias="0.6" />
 
     <Button
-        android:id="@+id/sendFile"
+        android:id="@+id/btnSendFile"
         android:layout_width="242dp"
         android:layout_height="87dp"
         android:text="Send File"
