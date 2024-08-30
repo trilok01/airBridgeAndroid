@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 
 public class SendActivity extends AppCompatActivity {
 
@@ -135,8 +136,9 @@ public class SendActivity extends AppCompatActivity {
             runOnUiThread(() -> Toast.makeText(SendActivity.this, "File sent successfully!", Toast.LENGTH_SHORT).show());
         } catch(SocketException e) {
             runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: Not able to connect to server", Toast.LENGTH_SHORT).show());
-        } catch (Exception e) {
-//            e.printStackTrace();
+        } catch(UnknownHostException e) {
+            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: Please enter valid IP address", Toast.LENGTH_SHORT).show());
+        } catch(Exception e) {
             runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
         }
     }
