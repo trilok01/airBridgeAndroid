@@ -5,30 +5,31 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 
 public class SendActivity extends AppCompatActivity {
 
     private static final int FILE_SELECT_CODE = 1;
     private Uri selectedFileUri;
     private String selectedFilePath;
-    private static String RECEIVER_IP = null;
-    private static int RECEIVER_PORT = 0;
+    private long fileSize;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,19 +48,10 @@ public class SendActivity extends AppCompatActivity {
         btnSendFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EditText ipAddressBox = findViewById(R.id.ipAddressBox);
-                EditText portNumberBox = findViewById(R.id.portNumberBox);
 
-                RECEIVER_IP = ipAddressBox.getText().toString();
-                String receiverPortString = portNumberBox.getText().toString();
-
-                if(RECEIVER_IP == null || RECEIVER_IP.equals("") || receiverPortString == null || receiverPortString.equals("")) {
-                    Toast.makeText(SendActivity.this, "Receiver's IP address and port number must not be empty", Toast.LENGTH_SHORT).show();
-                } else if (selectedFileUri == null) {
+                if (selectedFileUri == null) {
                     Toast.makeText(SendActivity.this, "Please select a file first", Toast.LENGTH_SHORT).show();
                 } else {
-                    RECEIVER_PORT = Integer.parseInt(receiverPortString);
-
                     new Thread(() -> sendFileToServer()).start();
                 }
             }
@@ -80,66 +72,69 @@ public class SendActivity extends AppCompatActivity {
         if (requestCode == FILE_SELECT_CODE && resultCode == Activity.RESULT_OK) {
             if (data != null) {
                 selectedFileUri = data.getData();
-                selectedFilePath = getFileName(selectedFileUri);
-                Toast.makeText(this, "Selected File: " + selectedFilePath, Toast.LENGTH_SHORT).show();
+                selectedFilePath = getFileNameAndSize(selectedFileUri)[0];
+                fileSize = Long.parseLong(getFileNameAndSize(selectedFileUri)[1]);
+
+                Toast.makeText(this, "Selected File: " + selectedFilePath + " File size: " + fileSize, Toast.LENGTH_SHORT).show();
             }
         }
     }
 
     // Function to get the file name from Uri
-    private String getFileName(Uri uri) {
-        String result = null;
+    private String[] getFileNameAndSize(Uri uri) {
+        String fileName = null;
+        String fileSize = null;
+        String[] result = new String[2];
+
         if (uri.getScheme().equals("content")) {
             try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
-                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                    fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                    fileSize = cursor.getString(cursor.getColumnIndex(OpenableColumns.SIZE));
                 }
             }
         }
-        if (result == null) {
-            result = uri.getPath();
-            int cut = result.lastIndexOf('/');
+        if (fileName == null) {
+            fileName = uri.getPath();
+            int cut = fileName.lastIndexOf('/');
             if (cut != -1) {
-                result = result.substring(cut + 1);
+                fileName = fileName.substring(cut + 1);
             }
         }
+
+        result[0] = fileName;
+        result[1] = fileSize;
         return result;
     }
 
     // Function to send files to the server
     private void sendFileToServer() {
-        String serverIp = RECEIVER_IP;
-        int serverPort = RECEIVER_PORT;
 
         try {
-            Socket socket = new Socket(serverIp, serverPort);
-            OutputStream outputStream = socket.getOutputStream();
+            OutputStream outputStream = SocketHandler.getSocket().getOutputStream();
             InputStream inputStream = getContentResolver().openInputStream(selectedFileUri);
             BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
 
-            long fileSize = inputStream.available();
-            String header = String.format("%-100s%-8d", selectedFilePath, fileSize);
+            String header = String.format("%-100s%-13d", selectedFilePath, fileSize);
             byte[] headerBytes = header.getBytes("UTF-8");
 
             outputStream.write(headerBytes);
 
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[8192];
             int bytesRead;
             while ((bytesRead = bufferedInputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, bytesRead);
             }
-            outputStream.flush();
-            outputStream.close();
-            bufferedInputStream.close();
-            inputStream.close();
 
             runOnUiThread(() -> Toast.makeText(SendActivity.this, "File sent successfully!", Toast.LENGTH_SHORT).show());
-        } catch(SocketException e) {
-            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: Not able to connect to server", Toast.LENGTH_SHORT).show());
-        } catch(UnknownHostException e) {
-            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: Please enter valid IP address", Toast.LENGTH_SHORT).show());
-        } catch(Exception e) {
-            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        } catch (FileNotFoundException e) {
+            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: File not found", Toast.LENGTH_SHORT).show());
+            throw new RuntimeException(e);
+        } catch (UnsupportedEncodingException e) {
+            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: File encoding not supported", Toast.LENGTH_SHORT).show());
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            runOnUiThread(() -> Toast.makeText(SendActivity.this, "Error: Something went wrong", Toast.LENGTH_SHORT).show());
         }
     }
 }
